@@ -46,6 +46,13 @@ git clone https://github.com/KyberLab/Virt-AArch64.git
 cd Virt-AArch64
 git submodule update --init --recursive
 ```
+或者使用Repo来克隆仓库：
+```bash
+mkdir -pv build/virt-aarch64 && cd build/virt-aarch64
+repo init -u https://github.com/KyberLab/KyberLab.git -b master -m manifests/qemu/virt-aarch64/default.xml
+repo sync -j$(nproc) -v && repo forall -c 'if [ -f .gitmodules ]; then git fetch && git submodule update --init --recursive --force; fi'
+cp .repo/manifests/template/* .
+```
 
 ### 3. 构建虚拟工作台镜像
 
