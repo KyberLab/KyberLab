@@ -5,11 +5,6 @@
             review="github.com" />
     <default remote="origin" revision="master" sync-j="4" />
 
-    <project name="KyberLab.git" path=".repo/manifests">
-        <copyfile src="template/Makefile" dest="Makefile" />
-        <copyfile src="template/WorkSpace.mk" dest="WorkSpace.mk" />
-    </project>
-
     <project name="KyberBench.git" path="bench" sync-c="true" />
     <project name="KyberConfig.git" path="config" revision="virt-aarch64" />
     <project name="KyberImage.git" path="image" />
