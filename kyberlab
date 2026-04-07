@@ -1,0 +1,187 @@
+#!/usr/bin/env python3
+"""
+KyberLab CLI - Embedded Systems Development Platform
+
+A single-file Python 3 CLI tool for KyberLab workspace management.
+Run with: python3 kyberlab <command> [options]
+"""
+
+import argparse
+import os
+import shutil
+import subprocess
+import sys
+
+REQUIRED_TOOLS = ("git", "repo", "make", "docker")
+
+
+def check_dependencies():
+    """Exit with error if any required tool is missing."""
+    missing = [t for t in REQUIRED_TOOLS if shutil.which(t) is None]
+    if not missing:
+        return
+    print(f"Error: The following required tools are not installed: {', '.join(missing)}")
+    print("Please install them before running 'kyberlab init'.")
+    print()
+    tips = {
+        "git":    "git:     sudo apt install git",
+        "repo":   "repo:    pip install git-repo  (or download from https://gerrit.googlesource.com/git-repo)",
+        "make":   "make:    sudo apt install make",
+        "docker": "docker:  https://docs.docker.com/engine/install/",
+    }
+    for t in missing:
+        print(f"  {tips.get(t, f'{t}:    please install {t}')}")
+    sys.exit(1)
+
+
+def detect_plat(board):
+    """Auto-detect PLAT by scanning manifests/ for the board directory.
+
+    Manifest path format: manifests/<PLAT>/<BOARD>/<CONFIG>.xml
+    """
+    manifests_dir = os.path.join(os.getcwd(), "manifests")
+    if not os.path.isdir(manifests_dir):
+        print(f"Error: 'manifests/' directory not found in {os.getcwd()}")
+        sys.exit(1)
+
+    for name in sorted(os.listdir(manifests_dir)):
+        if os.path.isdir(os.path.join(manifests_dir, name, board)):
+            return name
+
+    print(f"Error: board '{board}' not found in manifests/")
+    sys.exit(1)
+
+
+def run_command(cmd, description):
+    """Run a shell command and exit on failure."""
+    print(f"[kyberlab] {description}...")
+    ret = subprocess.call(cmd)
+    if ret != 0:
+        print(f"Error: {' '.join(cmd)!r} failed (exit {ret})")
+        sys.exit(1)
+
+
+def do_init(args):
+    """Initialize a new workspace."""
+    check_dependencies()
+
+    url = args.url
+    branch = args.branch
+    board = args.board
+    config = args.config
+
+    plat = detect_plat(board)
+    manifest = f"manifests/{plat}/{board}/{config}.xml"
+    if not os.path.isfile(manifest):
+        print(f"Error: manifest '{manifest}' not found")
+        sys.exit(1)
+
+    workspace = f"build/{board}"
+
+    print(f"[kyberlab] Initializing workspace '{board}'...")
+    print(f"  URL:        {url}")
+    print(f"  Branch:     {branch}")
+    print(f"  Manifest:   {manifest}")
+    print(f"  Workspace:  {workspace}")
+    print()
+
+    os.makedirs(workspace, exist_ok=True)
+    os.chdir(workspace)
+
+    nproc = os.cpu_count() or 4
+
+    run_command(
+        ["repo", "init", "-u", url, "-b", branch, "-m", manifest],
+        "Running repo init",
+    )
+    run_command(
+        ["repo", "sync", "-j", str(nproc), "-v"],
+        f"Running repo sync (-j{nproc})",
+    )
+    run_command(
+        ["repo", "forall", "-c",
+         "if [ -f .gitmodules ]; then git fetch && git submodule update --init --recursive --force; fi"],
+        "Initializing git submodules",
+    )
+
+    tpl = ".repo/manifests/template"
+    if os.path.isdir(tpl):
+        files = os.listdir(tpl)
+        if files:
+            print("[kyberlab] Copying template files...")
+            for f in files:
+                src = os.path.join(tpl, f)
+                if os.path.isfile(src):
+                    shutil.copy2(src, os.getcwd())
+        else:
+            print(f"[kyberlab] Warning: no files in '{tpl}'")
+    else:
+        print(f"[kyberlab] Warning: '{tpl}' not found")
+
+    print()
+    print(f"[kyberlab] Workspace '{board}' initialized successfully!")
+    print(f"[kyberlab] Enter with: cd {workspace}")
+
+
+HELP_TEXT = """\
+KyberLab CLI - Embedded Systems Development Platform
+
+Usage:
+  kyberlab help                     Show this help message
+  kyberlab init [options]           Initialize a new workspace
+
+Init Options:
+  -u, --url     Git URL          (default: https://github.com/KyberLab/KyberLab.git)
+  -b, --branch  Git branch       (default: master)
+  -d, --board   Board name       (default: virt-aarch64)
+  -m, --config  Config file name (default: default)
+
+Project Overview:
+  KyberLab is an embedded systems development platform that automates building,
+  configuring, and running system images (kernels, bootloaders, root filesystems).
+
+  Key Components:
+    - KyberBench: Docker-based development environments
+    - KyberImage: Build orchestration via Makefile macros
+    - KyberConfig: Per-target build configurations
+
+  Workflow:
+    1. kyberlab init              Create workspace
+    2. make build_virt-aarch64    Build Docker workbench image
+    3. make build                 Build default system image
+    4. make emu                   Run image in QEMU
+
+Prerequisites:
+  git, repo, make, docker
+"""
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        prog="kyberlab",
+        description="KyberLab CLI",
+        add_help=False,
+    )
+    sub = parser.add_subparsers(dest="command")
+
+    sub.add_parser("help", help="Show usage and project overview")
+
+    p_init = sub.add_parser("init", help="Initialize a new workspace")
+    p_init.add_argument("-u", "--url",    default="https://github.com/KyberLab/KyberLab.git", help="Git URL")
+    p_init.add_argument("-b", "--branch", default="master", help="Git branch")
+    p_init.add_argument("-d", "--board",  default="virt-aarch64", help="Board name")
+    p_init.add_argument("-m", "--config", default="default", help="Config file name")
+
+    args = parser.parse_args()
+
+    if args.command == "help":
+        print(HELP_TEXT, end="")
+    elif args.command == "init":
+        do_init(args)
+    else:
+        parser.print_help()
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()
