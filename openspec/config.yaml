@@ -1,5 +1,5 @@
 # Default workflow schema
-schema: spec-default
+schema: spec-driven
 
 context: |
   技术栈：Python

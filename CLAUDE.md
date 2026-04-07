@@ -33,6 +33,84 @@ The Makefile framework uses extensive macro composition (`define`/`eval`/`call`)
 
 ## Common Commands
 
+### KyberLab CLI Installation
+
+From the KyberLab repository root, install the CLI:
+
+```bash
+# System-wide installation (requires sudo)
+sudo ./install.sh
+
+# User-only installation
+./install.sh --user
+
+# Uninstall
+sudo ./install.sh --uninstall   # system-wide
+./install.sh --uninstall --user # user-only
+```
+
+After installation, `kyberlab` command is available from any directory.
+
+### KyberLab CLI Usage
+
+Initialize a workspace:
+
+```bash
+# Initialize Virt-AArch64 workspace (default)
+kyberlab init
+
+# Specify different board, branch, or URL
+kyberlab init -d virt-x86_64
+kyberlab init -u <your-url> -b <your-branch> -d <board> -m <config>
+```
+
+Workspace build commands (run from workspace directory):
+
+```bash
+# Build the Docker workbench image
+kyberlab dkbuild
+
+# Build specific Docker image
+kyberlab dkbuild -d develop
+
+# Start Docker container (interactive)
+kyberlab dkrun
+
+# Start Docker container (detached)
+kyberlab dkrund
+
+# Pin Docker dependencies
+kyberlab dkpin
+```
+
+Build system images (run from workspace directory):
+
+```bash
+# Build default image
+kyberlab build
+
+# Build a specific image (e.g., BusyBox)
+kyberlab build -i BusyBox
+
+# Install default image
+kyberlab install
+
+# Install specific image
+kyberlab install -i BusyBox
+
+# Clean specific image
+kyberlab clean -i BusyBox
+
+# Run default image in QEMU
+make emu
+
+# Run specific image in QEMU
+make emu_buildroot
+make emu_busybox
+```
+
+For more options, run `kyberlab help`.
+
 All make commands are run from a workspace directory (e.g., `build/virt-aarch64/`):
 
 ```bash

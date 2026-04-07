@@ -28,21 +28,62 @@ In the AI era, software development methods such as Vibe Coding and Spec Coding 
 
 ## Quick Start
 
-### 1. Environment Preparation
+### 1. Installation
 
-Ensure the following dependencies are installed:
+You can install KyberLab to make the `kyberlab` command available system-wide or for your user only.
+
+**System-wide installation** (requires sudo, installs to `/usr/local/bin`):
+
+```bash
+# From the KyberLab repository root
+sudo ./install.sh
+```
+
+**User-only installation** (no sudo required, installs to `~/.local/bin`):
+
+```bash
+# From the KyberLab repository root
+./install.sh --user
+```
+
+**Verification**: After installation, verify it works:
+
+```bash
+kyberlab help
+```
+
+**Uninstall**:
+
+```bash
+# System-wide
+sudo ./install.sh --uninstall
+
+# User-only
+./install.sh --uninstall --user
+```
+
+Note: Uninstalling KyberLab does not delete your workspace data (build/, config/ directories).
+
+If `~/.local/bin` is not in your PATH, the installer will provide instructions to add it.
+
+---
+
+### 2. Environment Preparation
+
+Ensure the following dependencies are installed on your system:
 - Git;
 - Repo;
 - Make;
 - Docker.
 
-### 2. Clone Repository
 
-Use the `kyberlab` CLI to initialize a workspace. Run from the repository root:
+### 3. Initialize Workspace
+
+Use the `kyberlab` CLI for one-click initialization. Run from the repository root:
 
 ```bash
 # Initialize Virt-AArch64 workspace (default)
-python3 kyberlab init
+kyberlab init
 ```
 
 This will automatically create `build/virt-aarch64/`, run `repo init`, `repo sync`, initialize submodules, and copy template files.
@@ -50,66 +91,66 @@ This will automatically create `build/virt-aarch64/`, run `repo init`, `repo syn
 To specify a different board, branch, or URL:
 
 ```bash
-python3 kyberlab init -d virt-x86_64
-python3 kyberlab init -u <your-url> -b <your-branch> -d <board> -m <config>
+kyberlab init -d virt-x86_64
+kyberlab init -u <your-url> -b <your-branch> -d <board> -m <config>
 ```
 
-For more options, run `python3 kyberlab help`.
+For more options, run `kyberlab help`.
 
-### 3. Build Virtual Workbench Image
+### 4. Build Virtual Workbench Image
 
 ```bash
 cd build/virt-aarch64
 
 # Build Virt-AArch64 virtual workbench image
-python3 ../../kyberlab dkbuild
+kyberlab dkbuild
 ```
 
-### 4. Build System Image
+### 5. Build System Image
 
 ```bash
 cd build/virt-aarch64
 
 # Build default image
-python3 ../../kyberlab build
+kyberlab build
 
 # Build a specific image (e.g. BusyBox)
-python3 ../../kyberlab build -i BusyBox
+kyberlab build -i BusyBox
 
 # Install default image
-python3 ../../kyberlab install
+kyberlab install
 
 # Install BusyBox
-python3 ../../kyberlab install -i BusyBox
+kyberlab install -i BusyBox
 
 # Clean a specific image
-python3 ../../kyberlab clean -i BusyBox
+kyberlab clean -i BusyBox
 ```
 
 The `kyberlab` CLI auto-detects the image name when run from inside an image directory (e.g. `config/image/BusyBox/` or `build/BusyBox/`), so `-i` is not needed.
 
-### 5. Docker Commands
+### 6. Docker Commands
 
 ```bash
 cd build/virt-aarch64
 
 # Build Docker workbench image (default board)
-python3 ../../kyberlab dkbuild
+kyberlab dkbuild
 
 # Build specific Docker image
-python3 ../../kyberlab dkbuild -d develop
+kyberlab dkbuild -d develop
 
 # Start Docker container interactively
-python3 ../../kyberlab dkrun
+kyberlab dkrun
 
 # Start Docker container detached
-python3 ../../kyberlab dkrund
+kyberlab dkrund
 
 # Pin Docker dependencies
-python3 ../../kyberlab dkpin
+kyberlab dkpin
 ```
 
-### 6. Run System Image
+### 7. Run System Image
 
 ```bash
 # Run default image
@@ -208,6 +249,76 @@ The virtual workbench environment is located in the `bench/` directory, providin
 - Support for different architectures.
 
 For more details, see the [bench documentation](bench/README.md).
+
+## Troubleshooting
+
+### kyberlab: command not found
+
+If the shell reports `kyberlab: command not found` after installation, it means the installation directory is not in your PATH.
+
+**For user-only installation (`~/.local/bin`)**:
+
+Add the following to your shell configuration file:
+
+- **Bash** (`~/.bashrc` or `~/.bash_profile`):
+  ```bash
+  export PATH="$HOME/.local/bin:$PATH"
+  ```
+
+- **Zsh** (`~/.zshrc`):
+  ```bash
+  export PATH="$HOME/.local/bin:$PATH"
+  ```
+
+- **Fish** (`~/.config/fish/config.fish`):
+  ```bash
+  set -gx PATH $HOME/.local/bin $PATH
+  ```
+
+After updating, restart your terminal or run:
+
+```bash
+source ~/.bashrc  # or ~/.zshrc, etc.
+```
+
+### Permission denied during system installation
+
+When running `sudo ./install.sh` you might see:
+
+```
+[ERROR] Cannot write to /usr/local/bin (permission denied)
+```
+
+This indicates you didn't use sudo. System-wide installation requires root privileges:
+
+```bash
+sudo ./install.sh
+```
+
+### Installation verification fails
+
+If the installer reports "Verification: Script is installed but execution test returned non-zero", this is typically because:
+
+1. The kyberlab command is being run from outside a workspace (no WorkSpace.mk found)
+2. You are not in a KyberLab repository or initialized workspace
+
+This warning is usually **harmless** - the kyberlab script is installed correctly and will work when run from a valid workspace or repository root.
+
+### Python version issues
+
+KyberLab requires **Python 3.8 or later**. If you encounter Python-related errors, verify your Python version:
+
+```bash
+python3 --version
+```
+
+If your system has an older Python version, upgrade Python before using KyberLab.
+
+### Uninstall preserves workspace data
+
+Uninstalling KyberLab only removes the `kyberlab` executable from the binary directory. Your workspace data (directories like `build/`, `config/`, `output/`) are **not affected** and remain on your system.
+
+---
 
 ## Contribution Guide
 

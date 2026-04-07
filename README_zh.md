@@ -30,7 +30,47 @@ KyberLab 是一个 基础软件开发平台：
 
 ## 快速开始
 
-### 1. 环境准备
+### 1. 安装
+
+您可以将 KyberLab 安装到系统或用户目录，使 `kyberlab` 命令全局可用。
+
+**系统级安装**（需要 sudo，安装到 `/usr/local/bin`）：
+
+```bash
+# 从 KyberLab 仓库根目录运行
+sudo ./install.sh
+```
+
+**用户级安装**（无需 sudo，安装到 `~/.local/bin`）：
+
+```bash
+# 从 KyberLab 仓库根目录运行
+./install.sh --user
+```
+
+**验证安装**：
+
+```bash
+kyberlab help
+```
+
+**卸载**：
+
+```bash
+# 系统级卸载
+sudo ./install.sh --uninstall
+
+# 用户级卸载
+./install.sh --uninstall --user
+```
+
+注意：卸载 KyberLab 不会删除您的工作区数据（`build/`、`config/` 等目录）。
+
+如果 `~/.local/bin` 不在您的 PATH 中，安装程序会提供添加它的说明。
+
+---
+
+### 2. 环境准备
 
 确保系统已安装以下依赖：
 - Git；
@@ -39,13 +79,13 @@ KyberLab 是一个 基础软件开发平台：
 - Docker。
 
 
-### 2. 初始化工作区
+### 3. 初始化工作区
 
 使用 `kyberlab` CLI 一键初始化。在仓库根目录下运行：
 
 ```bash
 # 初始化 Virt-AArch64 工作区（默认）
-python3 kyberlab init
+kyberlab init
 ```
 
 这将自动创建 `build/virt-aarch64/`，运行 `repo init`、`repo sync`，初始化子仓库，并复制模板文件。
@@ -53,66 +93,66 @@ python3 kyberlab init
 指定不同的开发板、分支或 URL：
 
 ```bash
-python3 kyberlab init -d virt-x86_64
-python3 kyberlab init -u <your-url> -b <your-branch> -d <board> -m <config>
+kyberlab init -d virt-x86_64
+kyberlab init -u <your-url> -b <your-branch> -d <board> -m <config>
 ```
 
-更多选项请运行 `python3 kyberlab help`。
+更多选项请运行 `kyberlab help`。
 
-### 3. 构建虚拟工作台镜像
+### 4. 构建虚拟工作台镜像
 
 ```bash
 cd build/virt-aarch64
 
 # 构建 Virt-AArch64 虚拟工作台镜像
-python3 ../../kyberlab dkbuild
+kyberlab dkbuild
 ```
 
-### 4. 构建系统镜像
+### 5. 构建系统镜像
 
 ```bash
 cd build/virt-aarch64
 
 # 构建默认镜像
-python3 ../../kyberlab build
+kyberlab build
 
 # 构建指定镜像（例如 BusyBox）
-python3 ../../kyberlab build -i BusyBox
+kyberlab build -i BusyBox
 
 # 安装默认镜像
-python3 ../../kyberlab install
+kyberlab install
 
 # 安装 BusyBox
-python3 ../../kyberlab install -i BusyBox
+kyberlab install -i BusyBox
 
 # 清理指定镜像的构建产物
-python3 ../../kyberlab clean -i BusyBox
+kyberlab clean -i BusyBox
 ```
 
 在镜像目录（如 `config/image/BusyBox/` 或 `build/BusyBox/`）中运行时，`-i` 参数会自动检测，无需手动指定。
 
-### 5. Docker 命令
+### 6. Docker 命令
 
 ```bash
 cd build/virt-aarch64
 
 # 构建 Docker 工作台镜像（默认开发板）
-python3 ../../kyberlab dkbuild
+kyberlab dkbuild
 
 # 构建指定 Docker 镜像
-python3 ../../kyberlab dkbuild -d develop
+kyberlab dkbuild -d develop
 
 # 启动 Docker 容器（交互式）
-python3 ../../kyberlab dkrun
+kyberlab dkrun
 
 # 启动 Docker 容器（后台运行）
-python3 ../../kyberlab dkrund
+kyberlab dkrund
 
 # 锁定 Docker 依赖
-python3 ../../kyberlab dkpin
+kyberlab dkpin
 ```
 
-### 6. 运行系统镜像
+### 7. 运行系统镜像
 
 ```bash
 # 运行默认镜像
@@ -214,6 +254,76 @@ make emu_buildroot
 - 对不同架构的支持。
 
 有关更多详细信息，请参阅 [bench 文档](bench/README_zh.md)。
+
+## 故障排除
+
+### kyberlab: command not found
+
+如果安装后 shell 报告 `kyberlab: command not found`，说明安装目录不在您的 PATH 中。
+
+**用户级安装（`~/.local/bin`）**：
+
+在您的 shell 配置文件中添加以下内容：
+
+- **Bash**（`~/.bashrc` 或 `~/.bash_profile`）：
+  ```bash
+  export PATH="$HOME/.local/bin:$PATH"
+  ```
+
+- **Zsh**（`~/.zshrc`）：
+  ```bash
+  export PATH="$HOME/.local/bin:$PATH"
+  ```
+
+- **Fish**（`~/.config/fish/config.fish`）：
+  ```bash
+  set -gx PATH $HOME/.local/bin $PATH
+  ```
+
+更新后，重启终端或运行：
+
+```bash
+source ~/.bashrc  # 或 ~/.zshrc 等
+```
+
+### 系统安装时权限被拒绝
+
+运行 `sudo ./install.sh` 时如果看到：
+
+```
+[ERROR] Cannot write to /usr/local/bin (permission denied)
+```
+
+这表示您没有使用 sudo。系统级安装需要 root 权限：
+
+```bash
+sudo ./install.sh
+```
+
+### 安装验证失败
+
+如果安装程序报告 "Verification: Script is installed but execution test returned non-zero"，通常是因为：
+
+1. kyberlab 命令在 workspace 之外运行（没有找到 WorkSpace.mk）
+2. 您不在 KyberLab 仓库或已初始化的 workspace 中
+
+这个警告通常是**无害的** - kyberlab 脚本已正确安装，当从有效的 workspace 或仓库根目录运行时将正常工作。
+
+### Python 版本问题
+
+KyberLab 需要 **Python 3.8 或更高版本**。如果遇到 Python 相关错误，请验证您的 Python 版本：
+
+```bash
+python3 --version
+```
+
+如果您的系统 Python 版本较旧，请先升级 Python。
+
+### 卸载保留工作区数据
+
+卸载 KyberLab 只会从二进制目录中删除 `kyberlab` 可执行文件。您的工作区数据（`build/`、`config/` 等目录）**不会被影响** 并会保留在您的系统上。
+
+---
 
 ## 贡献指南
 
