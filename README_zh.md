@@ -34,6 +34,7 @@ KyberLab 是一个 基础软件开发平台：
 
 确保系统已安装以下依赖：
 - Git；
+- Repo；
 - Make；
 - Docker。
 
@@ -57,9 +58,6 @@ cp .repo/manifests/template/* .
 ### 3. 构建虚拟工作台镜像
 
 ```bash
-# 构建Dockpin虚拟工作台镜像，支持的容器镜像为 bench/image/Dockpin/Dockerfile 目录下的目录名
-make dockpin_virt-aarch64
-
 # 构建Virt-AArch64虚拟工作台镜像
 make build_virt-aarch64
 

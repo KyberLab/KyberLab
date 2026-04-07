@@ -1,6 +1,6 @@
 # KyberLab
 
-[English Version](README.md) | 中文版本
+English Version | [中文版本](README_zh.md)
 
 ## Project Overview
 
@@ -32,6 +32,7 @@ In the AI era, software development methods such as Vibe Coding and Spec Coding 
 
 Ensure the following dependencies are installed:
 - Git;
+- Repo;
 - Make;
 - Docker.
 
@@ -54,9 +55,6 @@ cp .repo/manifests/template/* .
 ### 3. Build Virtual Workbench Image
 
 ```bash
-# Build Dockpin virtual workbench image, supported container images are directory names under bench/image/Dockpin/Dockerfile directory
-make dockpin_virt-aarch64
-
 # Build Virt-AArch64 virtual workbench image
 make build_virt-aarch64
 
