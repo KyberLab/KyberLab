@@ -38,44 +38,78 @@ Ensure the following dependencies are installed:
 
 ### 2. Clone Repository
 
-Take Virt-AArch64 as an example, using the default WorkSpace:
+Use the `kyberlab` CLI to initialize a workspace. Run from the repository root:
+
 ```bash
-git clone https://github.com/KyberLab/Virt-AArch64.git
-cd Virt-AArch64
-git submodule update --init --recursive
+# Initialize Virt-AArch64 workspace (default)
+python3 kyberlab init
 ```
-Or use Repo to clone the repository:
+
+This will automatically create `build/virt-aarch64/`, run `repo init`, `repo sync`, initialize submodules, and copy template files.
+
+To specify a different board, branch, or URL:
+
 ```bash
-mkdir -pv build/virt-aarch64 && cd build/virt-aarch64
-repo init -u https://github.com/KyberLab/KyberLab.git -b master -m manifests/qemu/virt-aarch64/default.xml
-repo sync -j$(nproc) -v && repo forall -c 'if [ -f .gitmodules ]; then git fetch && git submodule update --init --recursive --force; fi'
-cp .repo/manifests/template/* .
+python3 kyberlab init -d virt-x86_64
+python3 kyberlab init -u <your-url> -b <your-branch> -d <board> -m <config>
 ```
+
+For more options, run `python3 kyberlab help`.
 
 ### 3. Build Virtual Workbench Image
 
 ```bash
-# Build Virt-AArch64 virtual workbench image
-make build_virt-aarch64
+cd build/virt-aarch64
 
-# Start Virt-AArch64 virtual workbench environment and enter interactive shell
-make run_virt-aarch64
+# Build Virt-AArch64 virtual workbench image
+python3 ../../kyberlab dkbuild
 ```
 
 ### 4. Build System Image
 
 ```bash
-# Build default image (will automatically enter container and execute in build directory by default)
-make build
+cd build/virt-aarch64
 
-# Install default image (specified by IMAGE_BUILD_LIST variable)
-make install
+# Build default image
+python3 ../../kyberlab build
 
-# Install BusyBox (default installation to output directory), supported system images are directory names under config/image directory
-make busybox_install
+# Build a specific image (e.g. BusyBox)
+python3 ../../kyberlab build -i BusyBox
+
+# Install default image
+python3 ../../kyberlab install
+
+# Install BusyBox
+python3 ../../kyberlab install -i BusyBox
+
+# Clean a specific image
+python3 ../../kyberlab clean -i BusyBox
 ```
 
-### 5. Run System Image
+The `kyberlab` CLI auto-detects the image name when run from inside an image directory (e.g. `config/image/BusyBox/` or `build/BusyBox/`), so `-i` is not needed.
+
+### 5. Docker Commands
+
+```bash
+cd build/virt-aarch64
+
+# Build Docker workbench image (default board)
+python3 ../../kyberlab dkbuild
+
+# Build specific Docker image
+python3 ../../kyberlab dkbuild -d develop
+
+# Start Docker container interactively
+python3 ../../kyberlab dkrun
+
+# Start Docker container detached
+python3 ../../kyberlab dkrund
+
+# Pin Docker dependencies
+python3 ../../kyberlab dkpin
+```
+
+### 6. Run System Image
 
 ```bash
 # Run default image

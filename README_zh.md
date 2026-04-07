@@ -39,46 +39,80 @@ KyberLab 是一个 基础软件开发平台：
 - Docker。
 
 
-### 2. 克隆仓库
+### 2. 初始化工作区
 
-以 Virt-AArch64 为例，使用默认的WorkSpace：
+使用 `kyberlab` CLI 一键初始化。在仓库根目录下运行：
+
 ```bash
-git clone https://github.com/KyberLab/Virt-AArch64.git
-cd Virt-AArch64
-git submodule update --init --recursive
+# 初始化 Virt-AArch64 工作区（默认）
+python3 kyberlab init
 ```
-或者使用Repo来克隆仓库：
+
+这将自动创建 `build/virt-aarch64/`，运行 `repo init`、`repo sync`，初始化子仓库，并复制模板文件。
+
+指定不同的开发板、分支或 URL：
+
 ```bash
-mkdir -pv build/virt-aarch64 && cd build/virt-aarch64
-repo init -u https://github.com/KyberLab/KyberLab.git -b master -m manifests/qemu/virt-aarch64/default.xml
-repo sync -j$(nproc) -v && repo forall -c 'if [ -f .gitmodules ]; then git fetch && git submodule update --init --recursive --force; fi'
-cp .repo/manifests/template/* .
+python3 kyberlab init -d virt-x86_64
+python3 kyberlab init -u <your-url> -b <your-branch> -d <board> -m <config>
 ```
+
+更多选项请运行 `python3 kyberlab help`。
 
 ### 3. 构建虚拟工作台镜像
 
 ```bash
-# 构建Virt-AArch64虚拟工作台镜像
-make build_virt-aarch64
+cd build/virt-aarch64
 
-# 启动Virt-AArch64虚拟工作台环境，并进入交互式Shell
-make run_virt-aarch64
+# 构建 Virt-AArch64 虚拟工作台镜像
+python3 ../../kyberlab dkbuild
 ```
 
 ### 4. 构建系统镜像
 
 ```bash
-# 构建默认镜像(默认会自动进入容器中执行，并在build目录中执行构建)
-make build
+cd build/virt-aarch64
 
-# 安装默认（由 IMAGE_BUILD_LIST 变量指定）镜像
-make install
+# 构建默认镜像
+python3 ../../kyberlab build
 
-# 安装BusyBox(默认安装到output目录)，支持的系统镜像为 config/image 目录下的目录名
-make busybox_install
+# 构建指定镜像（例如 BusyBox）
+python3 ../../kyberlab build -i BusyBox
+
+# 安装默认镜像
+python3 ../../kyberlab install
+
+# 安装 BusyBox
+python3 ../../kyberlab install -i BusyBox
+
+# 清理指定镜像的构建产物
+python3 ../../kyberlab clean -i BusyBox
 ```
 
-### 5. 运行系统镜像
+在镜像目录（如 `config/image/BusyBox/` 或 `build/BusyBox/`）中运行时，`-i` 参数会自动检测，无需手动指定。
+
+### 5. Docker 命令
+
+```bash
+cd build/virt-aarch64
+
+# 构建 Docker 工作台镜像（默认开发板）
+python3 ../../kyberlab dkbuild
+
+# 构建指定 Docker 镜像
+python3 ../../kyberlab dkbuild -d develop
+
+# 启动 Docker 容器（交互式）
+python3 ../../kyberlab dkrun
+
+# 启动 Docker 容器（后台运行）
+python3 ../../kyberlab dkrund
+
+# 锁定 Docker 依赖
+python3 ../../kyberlab dkpin
+```
+
+### 6. 运行系统镜像
 
 ```bash
 # 运行默认镜像

@@ -142,6 +142,39 @@ def run_make(target, work_dir):
         sys.exit(ret)
 
 
+def run_make_with_env(env_vars, target, work_dir):
+    """Run make <target> from work_dir with extra make variables."""
+    cmd = ["make", f"{env_vars}", target]
+    print(f"[kyberlab] Running 'make {env_vars} {target}' from {work_dir}")
+    ret = subprocess.call(cmd, cwd=work_dir)
+    if ret != 0:
+        print(f"Error: 'make {target}' failed (exit {ret})")
+        sys.exit(ret)
+
+
+def is_container_running(name, work_dir):
+    """Check if a container for NAME is running under the current workspace.
+
+    Container naming: bench_daemon_name in the Makefile uses
+    $(BENCH_NAME)_<IMAGE>_<user>_<md5prefix> pattern.
+    We check by matching the bench name prefix in `docker ps`.
+    """
+    try:
+        result = subprocess.run(
+            ["docker", "ps", "--format", "{{.Names}}"],
+            capture_output=True, text=True, cwd=work_dir
+        )
+        container_names = result.stdout.strip().splitlines()
+        # Container name format: $(BENCH_NAME)_<IMAGE>_<user>_<md5>
+        # BENCH_NAME defaults to "bench", so pattern is "bench_<IMAGE>_..."
+        for cn in container_names:
+            if f"_{name}_" in cn:
+                return True
+        return False
+    except (subprocess.SubprocessError, FileNotFoundError):
+        return False
+
+
 def require_workspace(context):
     if context != CONTEXT_WORKSPACE:
         print("Error: This command requires an initialized workspace.")
@@ -250,8 +283,28 @@ def do_build_phase(phase, image, context, work_dir):
 
 # --- Docker commands ---
 
-def do_docker_command(action, name, context, work_dir):
+def do_docker_command(action, name, context, work_dir, user_cmd=None):
+    """Run a docker-related make target.
+
+    For 'dkexec': checks container is running first, passes USER_RUN_CMD if given.
+    """
     require_workspace(context)
+
+    # dkexec requires container running check
+    if action == "dkexec":
+        if not is_container_running(name, work_dir):
+            print(f"Error: Container '{name}' is not running.")
+            print(f"       Start it first with: kyberlab dkrund -d {name}")
+            sys.exit(1)
+        prefix = DOCKER_MAKE_PREFIX[action]
+        target = f"{prefix}_{name}"
+        if user_cmd:
+            run_make_with_env(f"USER_RUN_CMD={user_cmd}", target, work_dir)
+        else:
+            run_make(target, work_dir)
+        return
+
+    # Other docker commands: normal make invocation
     prefix = DOCKER_MAKE_PREFIX[action]
     target = f"{prefix}_{name}"
     run_make(target, work_dir)
@@ -295,7 +348,7 @@ Docker Commands:
   kyberlab dkbuild [-d NAME]        Build Docker workbench image
   kyberlab dkrun   [-d NAME]        Start Docker container interactively
   kyberlab dkrund  [-d NAME]        Start Docker container (detached)
-  kyberlab dkexec  [-d NAME]        Execute command in running container
+  kyberlab dkexec  [-d NAME] [-c CMD] Execute command in running container
   kyberlab dkpin   [-d NAME]        Pin Docker image dependencies
 
 Auto-Detect:
@@ -364,6 +417,8 @@ def build_parser():
     for action in DOCKER_COMMANDS:
         p = sub.add_parser(action, help=f"Docker: {action}")
         p.add_argument("-d", "--name", default=None, help="Docker name")
+        if action == "dkexec":
+            p.add_argument("-c", "--cmd", default=None, help="Command to execute inside the container")
 
     return parser
 
@@ -399,7 +454,9 @@ def main():
                 name = os.path.basename(root)
             else:
                 name = "virt-aarch64"
-        do_docker_command(args.command, name, context, root)
+        # dkexec supports -c CMD for USER_RUN_CMD
+        user_cmd = getattr(args, "cmd", None)
+        do_docker_command(args.command, name, context, root, user_cmd=user_cmd)
 
     else:
         parser.print_help()
