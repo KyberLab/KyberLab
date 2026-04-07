@@ -1,20 +1,19 @@
-schema: spec-driven
+schema:spec-default# 默认工作流 schema
 
-# Project context (optional)
-# This is shown to AI when creating artifacts.
-# Add your tech stack, conventions, style guides, domain knowledge, etc.
-# Example:
-#   context: |
-#     Tech stack: TypeScript, React, Node.js
-#     We use conventional commits
-#     Domain: e-commerce platform
+context:|
+  技术栈：Python
 
-# Per-artifact rules (optional)
-# Add custom rules for specific artifacts.
-# Example:
-#   rules:
-#     proposal:
-#       - Keep proposals under 500 words
-#       - Always include a "Non-goals" section
-#     tasks:
-#       - Break tasks into chunks of max 2 hours
+rules:
+    proposal:
+        -必须包含回滚计划
+        -识别受影响的团队
+    specs:
+        -使用Given/When/Then格式编写场景
+        -每个需求至少有一个场景
+    design:
+        -对复杂流程包含序列图
+        -识别所有外部依赖
+    tasks:
+        -每个任务必须可估算
+        -包含验收标准
+
