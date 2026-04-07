@@ -6,7 +6,7 @@
     <default remote="origin" revision="master" sync-j="4" />
 
     <project name="KyberBench.git" path="bench" sync-c="true" />
-    <project name="KyberConfig.git" path="config" revision="virt-x86_64" />
+    <project name="KyberConfig.git" path="config" revision="rockpi5b" />
     <project name="KyberImage.git" path="image" />
 
 </manifest>
