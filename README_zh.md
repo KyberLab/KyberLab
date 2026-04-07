@@ -81,20 +81,37 @@ sudo ./install.sh --uninstall
 
 ### 3. 初始化工作区
 
-使用 `kyberlab` CLI 一键初始化。在仓库根目录下运行：
+使用 `kyberlab` CLI 一键初始化。
+
+**在 KyberLab 仓库根目录**（包含 `manifests/` 和 `template/`）：
 
 ```bash
 # 初始化 Virt-AArch64 工作区（默认）
 kyberlab init
 ```
 
-这将自动创建 `build/virt-aarch64/`，运行 `repo init`、`repo sync`，初始化子仓库，并复制模板文件。
+这将在 `build/virt-aarch64/` 创建并运行 `repo init`、`repo sync`、初始化子模块、复制模板文件。
 
-指定不同的开发板、分支或 URL：
+**在任何其他目录**（仓库外部）：
 
 ```bash
-kyberlab init -d virt-x86_64
-kyberlab init -u <your-url> -b <your-branch> -d <board> -m <config>
+# 在当前目录初始化工作区（创建 ./<board>）
+kyberlab init -d <board> -p <platform>
+```
+
+必须在仓库外使用 `-p` 指定平台（例如 `qemu`、`rockchip`）。工作区将在当前目录下创建 `./<board>`。您也可以使用 `-u`、`-b`、`-m` 自定义仓库和配置。
+
+**示例**：
+
+```bash
+# 从仓库根目录：初始化默认开发板
+kyberlab init
+
+# 从任意位置：使用 qemu 平台初始化 x86_64 开发板
+kyberlab init -d virt-x86_64 -p qemu
+
+# 从任意位置：自定义 URL 和分支
+kyberlab init -u https://github.com/example/KyberLab.git -b develop -d my-board -p rockchip -m custom
 ```
 
 更多选项请运行 `kyberlab help`。

@@ -56,12 +56,17 @@ After installation, `kyberlab` command is available from any directory.
 Initialize a workspace:
 
 ```bash
-# Initialize Virt-AArch64 workspace (default)
+# From KyberLab repo root: Initialize Virt-AArch64 workspace (default)
 kyberlab init
 
-# Specify different board, branch, or URL
-kyberlab init -d virt-x86_64
+# From anywhere: specify board and platform (-p required outside repo)
+kyberlab init -d <board> -p <platform>
+
+# Custom URL, branch, board, config
 kyberlab init -u <your-url> -b <your-branch> -d <board> -m <config>
+
+# Full example outside repo
+kyberlab init -u https://github.com/KyberLab/KyberLab.git -b master -d virt-aarch64 -p qemu -m default
 ```
 
 Workspace build commands (run from workspace directory):

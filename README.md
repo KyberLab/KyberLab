@@ -79,20 +79,37 @@ Ensure the following dependencies are installed on your system:
 
 ### 3. Initialize Workspace
 
-Use the `kyberlab` CLI for one-click initialization. Run from the repository root:
+Use the `kyberlab` CLI for one-click initialization.
+
+**From the KyberLab repository root** (contains `manifests/` and `template/`):
 
 ```bash
 # Initialize Virt-AArch64 workspace (default)
 kyberlab init
 ```
 
-This will automatically create `build/virt-aarch64/`, run `repo init`, `repo sync`, initialize submodules, and copy template files.
+This creates `build/virt-aarch64/`, runs `repo init`, `repo sync`, initializes submodules, and copies template files.
 
-To specify a different board, branch, or URL:
+**From any other directory** (outside the repository):
 
 ```bash
-kyberlab init -d virt-x86_64
-kyberlab init -u <your-url> -b <your-branch> -d <board> -m <config>
+# Initialize a workspace in the current directory (creates ./<board>)
+kyberlab init -d <board> -p <platform>
+```
+
+You must specify the platform with `-p` (e.g., `qemu`, `rockchip`). The workspace will be created at `./<board>` relative to the current directory. You can also provide `-u`, `-b`, and `-m` to customize the remote repository and configuration.
+
+**Examples**:
+
+```bash
+# From repo root: initialize default board
+kyberlab init
+
+# From anywhere: initialize x86_64 board using qemu platform
+kyberlab init -d virt-x86_64 -p qemu
+
+# From anywhere: custom URL and branch
+kyberlab init -u https://github.com/example/KyberLab.git -b develop -d my-board -p my-platform -m custom
 ```
 
 For more options, run `kyberlab help`.

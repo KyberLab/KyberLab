@@ -217,7 +217,7 @@ def detect_plat(board, repo_root):
     sys.exit(1)
 
 
-def do_init(args, repo_root):
+def do_init(args, base_dir, context, platform=None):
     check_dependencies()
 
     url = args.url
@@ -225,14 +225,30 @@ def do_init(args, repo_root):
     board = args.board
     config = args.config
 
-    plat = detect_plat(board, repo_root)
-    manifest = f"manifests/{plat}/{board}/{config}.xml"
-    manifest_abs = os.path.join(repo_root, manifest)
-    if not os.path.isfile(manifest_abs):
-        print(f"Error: manifest '{manifest}' not found")
+    # Determine platform and manifest path based on context
+    if context == CONTEXT_REPO:
+        # Auto-detect platform from local manifests
+        plat = detect_plat(board, base_dir)
+        manifest = f"manifests/{plat}/{board}/{config}.xml"
+        manifest_abs = os.path.join(base_dir, manifest)
+        if not os.path.isfile(manifest_abs):
+            print(f"Error: manifest '{manifest}' not found in repository")
+            sys.exit(1)
+    elif context == CONTEXT_UNKNOWN:
+        # Require platform argument when outside repo
+        if not platform:
+            print("Error: When initializing from outside the KyberLab repository, the -p/--platform flag is required.")
+            print("Usage: kyberlab init -d <board> -p <platform> [-u <url>] [-b <branch>] [-m <config>]")
+            sys.exit(1)
+        plat = platform
+        manifest = f"manifests/{plat}/{board}/{config}.xml"
+        # No local file check; repo will fetch from URL
+    else:
+        # Should not happen, but be safe
+        print(f"Error: Unexpected context '{context}' for init")
         sys.exit(1)
 
-    workspace = os.path.join(repo_root, "build", board)
+    workspace = os.path.join(base_dir, args.board)
     os.makedirs(workspace, exist_ok=True)
 
     print(f"[kyberlab] Initializing workspace '{board}'...")
@@ -262,7 +278,7 @@ def do_init(args, repo_root):
     else:
         print(f"[kyberlab] Warning: '{tpl}' not found")
 
-    rel = os.path.relpath(workspace, repo_root)
+    rel = os.path.relpath(workspace, base_dir)
     print()
     print(f"[kyberlab] Workspace '{board}' initialized successfully!")
     print(f"[kyberlab] Enter with: cd {rel}")
@@ -323,10 +339,12 @@ Init Options:
   -b, --branch  Branch           (default: master)
   -d, --board   Board name       (default: virt-aarch64)
   -m, --config  Config file name (default: default)
+  -p, --platform Platform name    (optional when run from repo root; required elsewhere)
 
 Description:
   This is the KyberLab repo root (contains manifests/ and template/).
   Use 'kyberlab init' to create an initialized workspace.
+  When run from outside the repository, -p/--platform is required.
 """
 
 WORKSPACE_HELP = """KyberLab CLI - Workspace Mode
@@ -368,9 +386,9 @@ Error: Not in a KyberLab repo root or workspace directory.
 
 Usage:
   kyberlab help                     Show this help message
-  kyberlab init [options]           Initialize a new workspace (in repo root)
+  kyberlab init [options]           Initialize a workspace (any directory)
 
-  After initializing a workspace, cd into build/<BOARD>/ and use:
+  After initializing a workspace, cd into <BOARD>/ and use:
     kyberlab build [-i IMAGE]       Build an image
     kyberlab dkbuild [-d NAME]      Build Docker workbench image
     ... see 'kyberlab help' from a workspace for full command list
@@ -380,6 +398,10 @@ Init Options:
   -b, --branch  Branch           (default: master)
   -d, --board   Board name       (default: virt-aarch64)
   -m, --config  Config file name (default: default)
+  -p, --platform Platform name    (required when not in KyberLab repo)
+
+Note: When run from outside the KyberLab repository, -p/--platform is required
+(e.g., qemu, virt). The workspace will be created at ./<board>.
 """
 
 
@@ -409,6 +431,8 @@ def build_parser():
     p_init.add_argument("-b", "--branch", default="master")
     p_init.add_argument("-d", "--board",  default="virt-aarch64")
     p_init.add_argument("-m", "--config", default="default")
+    p_init.add_argument("-p", "--platform", default=None,
+                        help="Platform name (e.g., qemu, virt) — required when running outside the KyberLab repository")
 
     for phase in BUILD_PHASES:
         p = sub.add_parser(phase, help=f"Run 'make {phase}' (or '<IMAGE>_{phase}')")
@@ -436,8 +460,12 @@ def main():
         cmd_help(context)
 
     elif args.command == "init":
-        require_repo_root(context)
-        do_init(args, root)
+        # Disallow init from inside an existing workspace
+        if context == CONTEXT_WORKSPACE:
+            print("Error: Cannot initialize a workspace from inside an existing workspace.")
+            print("       Please run 'kyberlab init' from the KyberLab repo root or another empty directory.")
+            sys.exit(1)
+        do_init(args, root, context, platform=args.platform)
 
     elif args.command in BUILD_PHASES:
         # Auto-detect image from cwd if -i not given
