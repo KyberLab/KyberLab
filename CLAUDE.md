@@ -62,7 +62,7 @@ make emu_busybox
 make fetch
 make patch
 make config
-make make build
+make build
 make install
 make package
 make clean

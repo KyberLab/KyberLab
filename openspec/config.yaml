@@ -1,19 +1,20 @@
-schema:spec-default# 默认工作流 schema
+# Default workflow schema
+schema: spec-default
 
-context:|
+context: |
   技术栈：Python
 
 rules:
-    proposal:
-        -必须包含回滚计划
-        -识别受影响的团队
-    specs:
-        -使用Given/When/Then格式编写场景
-        -每个需求至少有一个场景
-    design:
-        -对复杂流程包含序列图
-        -识别所有外部依赖
-    tasks:
-        -每个任务必须可估算
-        -包含验收标准
+  proposal:
+    - 必须包含回滚计划
+    - 识别受影响的团队
+  specs:
+    - 使用Given/When/Then格式编写场景
+    - 每个需求至少有一个场景
+  design:
+    - 对复杂流程包含序列图
+    - 识别所有外部依赖
+  tasks:
+    - 每个任务必须可估算
+    - 包含验收标准
 

@@ -2,7 +2,14 @@
 """
 KyberLab CLI - Embedded Systems Development Platform
 
-A single-file Python 3 CLI tool for KyberLab workspace management.
+Unified CLI that auto-detects whether it's running from:
+  - Repo root: the KyberLab manifests/templates git repository
+  - Workspace: an initialized workspace (contains WorkSpace.mk)
+  - Workspace subdirectory: nested paths inside a workspace
+
+In repo root: supports 'init' to create workspaces.
+In workspace:  supports build phases and docker container commands.
+
 Run with: python3 kyberlab <command> [options]
 """
 
@@ -14,9 +21,143 @@ import sys
 
 REQUIRED_TOOLS = ("git", "repo", "make", "docker")
 
+BUILD_PHASES = ("build", "fetch", "patch", "config", "install",
+                "package", "clean", "distclean")
+
+DOCKER_COMMANDS = ("dkbuild", "dkrun", "dkrund", "dkexec", "dkpin")
+
+DOCKER_MAKE_PREFIX = {
+    "dkbuild": "build",
+    "dkrun":   "run",
+    "dkrund":  "rund",
+    "dkexec":  "exec",
+    "dkpin":   "dockpin",
+}
+
+# --- Context detection ---
+
+CONTEXT_UNKNOWN  = "UNKNOWN"
+CONTEXT_REPO     = "REPO_ROOT"
+CONTEXT_WORKSPACE = "WORKSPACE"
+
+
+def detect_context(cwd=None):
+    """Walk up from cwd checking for KyberLab context.
+
+    Returns (context_type, root_path) where:
+      - CONTEXT_REPO:      root = git repo with manifests/ + template/
+      - CONTEXT_WORKSPACE: root = dir containing WorkSpace.mk
+      - CONTEXT_UNKNOWN:   root = cwd
+    """
+    path = os.path.abspath(cwd or os.getcwd())
+    while True:
+        if os.path.isfile(os.path.join(path, "WorkSpace.mk")):
+            return CONTEXT_WORKSPACE, path
+        if (os.path.isdir(os.path.join(path, "manifests"))
+                and os.path.isdir(os.path.join(path, "template"))):
+            return CONTEXT_REPO, path
+        parent = os.path.dirname(path)
+        if parent == path:
+            break
+        path = parent
+    return CONTEXT_UNKNOWN, os.path.abspath(cwd or os.getcwd())
+
+
+def detect_image_from_cwd(workspace_root, cwd=None):
+    """Walk up from cwd to workspace_root, check if we're inside an IMAGE directory.
+
+    Checks each directory name against known images from two sources:
+      1. config/image/<IMAGE>/  (image definitions)
+      2. build/<IMAGE>/          (build output directories)
+    Returns the image name or None.
+    """
+    cwd_path = os.path.abspath(cwd or os.getcwd())
+
+    # Collect known image names from config/image/
+    known = {}
+    image_dir = os.path.join(workspace_root, "config", "image")
+    if os.path.isdir(image_dir):
+        for d in os.listdir(image_dir):
+            if os.path.isdir(os.path.join(image_dir, d)):
+                known[d.lower()] = d
+
+    # Collect known image names from build/ (output directories)
+    build_dir = os.path.join(workspace_root, "build")
+    if os.path.isdir(build_dir):
+        for d in os.listdir(build_dir):
+            if os.path.isdir(os.path.join(build_dir, d)):
+                known.setdefault(d.lower(), d)
+
+    # Walk up from cwd to workspace_root
+    path = cwd_path
+    while True:
+        lower = os.path.basename(path).lower()
+        if lower in known:
+            return known[lower]
+        if path == workspace_root:
+            break
+        parent = os.path.dirname(path)
+        if parent == path:
+            break
+        path = parent
+    return None
+
+
+def detect_docker_from_cwd(workspace_root, cwd=None):
+    """Walk up from cwd to workspace_root, check if we're inside a docker directory.
+
+    Checks each directory name against known docker names in bench/image/dockerfile/.
+    Returns the docker name or None.
+    """
+    cwd_path = os.path.abspath(cwd or os.getcwd())
+    docker_dir = os.path.join(workspace_root, "bench", "image", "dockerfile")
+
+    if not os.path.isdir(docker_dir):
+        return None
+    known = {d.lower(): d for d in os.listdir(docker_dir)
+             if os.path.isdir(os.path.join(docker_dir, d))}
+
+    path = cwd_path
+    while True:
+        lower = os.path.basename(path).lower()
+        if lower in known:
+            return known[lower]
+        if path == workspace_root:
+            break
+        parent = os.path.dirname(path)
+        if parent == path:
+            break
+        path = parent
+    return None
+
+
+# --- Make runner ---
+
+def run_make(target, work_dir):
+    """Run make <target> from work_dir. Exit on failure."""
+    print(f"[kyberlab] Running 'make {target}' from {work_dir}")
+    ret = subprocess.call(["make", target], cwd=work_dir)
+    if ret != 0:
+        print(f"Error: 'make {target}' failed (exit {ret})")
+        sys.exit(ret)
+
+
+def require_workspace(context):
+    if context != CONTEXT_WORKSPACE:
+        print("Error: This command requires an initialized workspace.")
+        print("       Use 'kyberlab init' from the KyberLab repo root first.")
+        sys.exit(1)
+
+
+def require_repo_root(context):
+    if context != CONTEXT_REPO:
+        print("Error: 'init' must be run from the KyberLab repo root.")
+        sys.exit(1)
+
+
+# --- Init command ---
 
 def check_dependencies():
-    """Exit with error if any required tool is missing."""
     missing = [t for t in REQUIRED_TOOLS if shutil.which(t) is None]
     if not missing:
         return
@@ -25,7 +166,7 @@ def check_dependencies():
     print()
     tips = {
         "git":    "git:     sudo apt install git",
-        "repo":   "repo:    pip install git-repo  (or download from https://gerrit.googlesource.com/git-repo)",
+        "repo":   "repo:    pip install git-repo  (or https://gerrit.googlesource.com/git-repo)",
         "make":   "make:    sudo apt install make",
         "docker": "docker:  https://docs.docker.com/engine/install/",
     }
@@ -34,35 +175,16 @@ def check_dependencies():
     sys.exit(1)
 
 
-def detect_plat(board):
-    """Auto-detect PLAT by scanning manifests/ for the board directory.
-
-    Manifest path format: manifests/<PLAT>/<BOARD>/<CONFIG>.xml
-    """
-    manifests_dir = os.path.join(os.getcwd(), "manifests")
-    if not os.path.isdir(manifests_dir):
-        print(f"Error: 'manifests/' directory not found in {os.getcwd()}")
-        sys.exit(1)
-
+def detect_plat(board, repo_root):
+    manifests_dir = os.path.join(repo_root, "manifests")
     for name in sorted(os.listdir(manifests_dir)):
         if os.path.isdir(os.path.join(manifests_dir, name, board)):
             return name
-
     print(f"Error: board '{board}' not found in manifests/")
     sys.exit(1)
 
 
-def run_command(cmd, description):
-    """Run a shell command and exit on failure."""
-    print(f"[kyberlab] {description}...")
-    ret = subprocess.call(cmd)
-    if ret != 0:
-        print(f"Error: {' '.join(cmd)!r} failed (exit {ret})")
-        sys.exit(1)
-
-
-def do_init(args):
-    """Initialize a new workspace."""
+def do_init(args, repo_root):
     check_dependencies()
 
     url = args.url
@@ -70,13 +192,15 @@ def do_init(args):
     board = args.board
     config = args.config
 
-    plat = detect_plat(board)
+    plat = detect_plat(board, repo_root)
     manifest = f"manifests/{plat}/{board}/{config}.xml"
-    if not os.path.isfile(manifest):
+    manifest_abs = os.path.join(repo_root, manifest)
+    if not os.path.isfile(manifest_abs):
         print(f"Error: manifest '{manifest}' not found")
         sys.exit(1)
 
-    workspace = f"build/{board}"
+    workspace = os.path.join(repo_root, "build", board)
+    os.makedirs(workspace, exist_ok=True)
 
     print(f"[kyberlab] Initializing workspace '{board}'...")
     print(f"  URL:        {url}")
@@ -85,46 +209,57 @@ def do_init(args):
     print(f"  Workspace:  {workspace}")
     print()
 
-    os.makedirs(workspace, exist_ok=True)
-    os.chdir(workspace)
-
     nproc = os.cpu_count() or 4
-
-    run_command(
-        ["repo", "init", "-u", url, "-b", branch, "-m", manifest],
-        "Running repo init",
-    )
-    run_command(
-        ["repo", "sync", "-j", str(nproc), "-v"],
-        f"Running repo sync (-j{nproc})",
-    )
-    run_command(
+    subprocess.check_call(["repo", "init", "-u", url, "-b", branch, "-m", manifest],
+                          cwd=workspace)
+    subprocess.check_call(["repo", "sync", "-j", str(nproc), "-v"], cwd=workspace)
+    subprocess.check_call(
         ["repo", "forall", "-c",
-         "if [ -f .gitmodules ]; then git fetch && git submodule update --init --recursive --force; fi"],
-        "Initializing git submodules",
-    )
+         "if [ -f .gitmodules ]; then git fetch && "
+         "git submodule update --init --recursive --force; fi"],
+        cwd=workspace)
 
-    tpl = ".repo/manifests/template"
+    tpl = os.path.join(workspace, ".repo", "manifests", "template")
     if os.path.isdir(tpl):
-        files = os.listdir(tpl)
-        if files:
-            print("[kyberlab] Copying template files...")
-            for f in files:
-                src = os.path.join(tpl, f)
-                if os.path.isfile(src):
-                    shutil.copy2(src, os.getcwd())
-        else:
-            print(f"[kyberlab] Warning: no files in '{tpl}'")
+        for f in os.listdir(tpl):
+            src = os.path.join(tpl, f)
+            if os.path.isfile(src):
+                shutil.copy2(src, workspace)
+        print("[kyberlab] Template files copied.")
     else:
         print(f"[kyberlab] Warning: '{tpl}' not found")
 
+    rel = os.path.relpath(workspace, repo_root)
     print()
     print(f"[kyberlab] Workspace '{board}' initialized successfully!")
-    print(f"[kyberlab] Enter with: cd {workspace}")
+    print(f"[kyberlab] Enter with: cd {rel}")
 
 
-HELP_TEXT = """\
-KyberLab CLI - Embedded Systems Development Platform
+# --- Build phase commands ---
+
+def do_build_phase(phase, image, context, work_dir):
+    require_workspace(context)
+
+    if image:
+        target = f"{image}_{phase}"
+    else:
+        target = phase
+
+    run_make(target, work_dir)
+
+
+# --- Docker commands ---
+
+def do_docker_command(action, name, context, work_dir):
+    require_workspace(context)
+    prefix = DOCKER_MAKE_PREFIX[action]
+    target = f"{prefix}_{name}"
+    run_make(target, work_dir)
+
+
+# --- Help ---
+
+REPO_HELP = """KyberLab CLI - Repo Root Mode
 
 Usage:
   kyberlab help                     Show this help message
@@ -132,31 +267,81 @@ Usage:
 
 Init Options:
   -u, --url     Git URL          (default: https://github.com/KyberLab/KyberLab.git)
-  -b, --branch  Git branch       (default: master)
+  -b, --branch  Branch           (default: master)
   -d, --board   Board name       (default: virt-aarch64)
   -m, --config  Config file name (default: default)
 
-Project Overview:
-  KyberLab is an embedded systems development platform that automates building,
-  configuring, and running system images (kernels, bootloaders, root filesystems).
+Description:
+  This is the KyberLab repo root (contains manifests/ and template/).
+  Use 'kyberlab init' to create an initialized workspace.
+"""
 
-  Key Components:
-    - KyberBench: Docker-based development environments
-    - KyberImage: Build orchestration via Makefile macros
-    - KyberConfig: Per-target build configurations
+WORKSPACE_HELP = """KyberLab CLI - Workspace Mode
 
-  Workflow:
-    1. kyberlab init              Create workspace
-    2. make build_virt-aarch64    Build Docker workbench image
-    3. make build                 Build default system image
-    4. make emu                   Run image in QEMU
+Usage:
+  kyberlab help                     Show this help message
 
-Prerequisites:
-  git, repo, make, docker
+Build Commands:
+  kyberlab build   [-i IMAGE]       Build image (default or specific)
+  kyberlab fetch   [-i IMAGE]       Fetch source
+  kyberlab patch   [-i IMAGE]       Apply patches
+  kyberlab config  [-i IMAGE]       Configure
+  kyberlab install [-i IMAGE]       Install built image
+  kyberlab package [-i IMAGE]       Package image
+  kyberlab clean   [-i IMAGE]       Clean build artifacts
+  kyberlab distclean [-i IMAGE]     Full cleanup
+
+Docker Commands:
+  kyberlab dkbuild [-d NAME]        Build Docker workbench image
+  kyberlab dkrun   [-d NAME]        Start Docker container interactively
+  kyberlab dkrund  [-d NAME]        Start Docker container (detached)
+  kyberlab dkexec  [-d NAME]        Execute command in running container
+  kyberlab dkpin   [-d NAME]        Pin Docker image dependencies
+
+Auto-Detect:
+  If run from an <IMAGE> directory (config/image/BusyBox/ etc.),
+  -i IMAGE is detected automatically.
+  If run from a docker directory (bench/image/dockerfile/qemu/ etc.),
+  -d NAME is detected automatically.
+
+Options:
+  -i IMAGE    Image name (e.g. BusyBox, Linux, BuildRoot, ...)
+  -d NAME     Docker name (e.g. develop, qemu, virt-aarch64, ...)
+"""
+
+UNKNOWN_HELP = """KyberLab CLI - Embedded Systems Development Platform
+
+Error: Not in a KyberLab repo root or workspace directory.
+
+Usage:
+  kyberlab help                     Show this help message
+  kyberlab init [options]           Initialize a new workspace (in repo root)
+
+  After initializing a workspace, cd into build/<BOARD>/ and use:
+    kyberlab build [-i IMAGE]       Build an image
+    kyberlab dkbuild [-d NAME]      Build Docker workbench image
+    ... see 'kyberlab help' from a workspace for full command list
+
+Init Options:
+  -u, --url     Git URL          (default: https://github.com/KyberLab/KyberLab.git)
+  -b, --branch  Branch           (default: master)
+  -d, --board   Board name       (default: virt-aarch64)
+  -m, --config  Config file name (default: default)
 """
 
 
-def main():
+def cmd_help(context):
+    if context == CONTEXT_REPO:
+        print(REPO_HELP, end="")
+    elif context == CONTEXT_WORKSPACE:
+        print(WORKSPACE_HELP, end="")
+    else:
+        print(UNKNOWN_HELP, end="")
+
+
+# --- Main ---
+
+def build_parser():
     parser = argparse.ArgumentParser(
         prog="kyberlab",
         description="KyberLab CLI",
@@ -164,20 +349,58 @@ def main():
     )
     sub = parser.add_subparsers(dest="command")
 
-    sub.add_parser("help", help="Show usage and project overview")
+    sub.add_parser("help", help="Show context-appropriate help")
 
     p_init = sub.add_parser("init", help="Initialize a new workspace")
-    p_init.add_argument("-u", "--url",    default="https://github.com/KyberLab/KyberLab.git", help="Git URL")
-    p_init.add_argument("-b", "--branch", default="master", help="Git branch")
-    p_init.add_argument("-d", "--board",  default="virt-aarch64", help="Board name")
-    p_init.add_argument("-m", "--config", default="default", help="Config file name")
+    p_init.add_argument("-u", "--url",    default="https://github.com/KyberLab/KyberLab.git")
+    p_init.add_argument("-b", "--branch", default="master")
+    p_init.add_argument("-d", "--board",  default="virt-aarch64")
+    p_init.add_argument("-m", "--config", default="default")
 
+    for phase in BUILD_PHASES:
+        p = sub.add_parser(phase, help=f"Run 'make {phase}' (or '<IMAGE>_{phase}')")
+        p.add_argument("-i", "--image", default=None, help="Target image name")
+
+    for action in DOCKER_COMMANDS:
+        p = sub.add_parser(action, help=f"Docker: {action}")
+        p.add_argument("-d", "--name", default=None, help="Docker name")
+
+    return parser
+
+
+def main():
+    context, root = detect_context()
+    parser = build_parser()
     args = parser.parse_args()
 
+    if args.command is None:
+        parser.print_help()
+        sys.exit(1)
+
     if args.command == "help":
-        print(HELP_TEXT, end="")
+        cmd_help(context)
+
     elif args.command == "init":
-        do_init(args)
+        require_repo_root(context)
+        do_init(args, root)
+
+    elif args.command in BUILD_PHASES:
+        # Auto-detect image from cwd if -i not given
+        image = args.image or detect_image_from_cwd(root)
+        do_build_phase(args.command, image, context, root)
+
+    elif args.command in DOCKER_COMMANDS:
+        # Auto-detect docker name from cwd if -d not given
+        name = args.name or detect_docker_from_cwd(root)
+        if not name:
+            # Fallback to board name from workspace path
+            parent = os.path.dirname(root)
+            if os.path.basename(parent) == "build":
+                name = os.path.basename(root)
+            else:
+                name = "virt-aarch64"
+        do_docker_command(args.command, name, context, root)
+
     else:
         parser.print_help()
         sys.exit(1)
