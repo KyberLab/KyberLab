@@ -22,7 +22,7 @@ import sys
 REQUIRED_TOOLS = ("git", "repo", "make", "docker")
 
 BUILD_PHASES = ("build", "fetch", "patch", "config", "install",
-                "package", "clean", "distclean")
+                "package", "clean", "distclean", "emu")
 
 DOCKER_COMMANDS = ("dkbuild", "dkrun", "dkrund", "dkexec", "dkpin")
 
@@ -129,6 +129,29 @@ def detect_docker_from_cwd(workspace_root, cwd=None):
             break
         path = parent
     return None
+
+
+def detect_plat_from_workspace(work_dir):
+    """Detect platform from workspace's .repo/manifests directory.
+
+    Returns the platform name (e.g., 'qemu', 'virt') or None if not found.
+    """
+    manifests_path = os.path.join(work_dir, ".repo", "manifests", "manifests")
+    if not os.path.isdir(manifests_path):
+        return None
+    for plat in os.listdir(manifests_path):
+        plat_path = os.path.join(manifests_path, plat)
+        if os.path.isdir(plat_path):
+            return plat
+    return None
+
+
+def ensure_kyberemu(work_dir):
+    """Ensure KyberEmu repository is available; install if missing."""
+    kyberemu_dir = os.path.join(work_dir, "build", "KyberEmu")
+    if not os.path.isdir(kyberemu_dir):
+        print("[kyberlab] KyberEmu not found. Initializing...")
+        run_make("kyberemu_install", work_dir)
 
 
 # --- Make runner ---
@@ -326,6 +349,28 @@ def do_docker_command(action, name, context, work_dir, user_cmd=None):
     run_make(target, work_dir)
 
 
+# --- Emu command ---
+
+def do_emu(image, context, work_dir):
+    """Run the emu command with platform check and KyberEmu auto-install."""
+    require_workspace(context)
+
+    # Determine make target
+    target = f"{image}_emu" if image else "emu"
+
+    # Check platform restriction: only qemu supported
+    plat = detect_plat_from_workspace(work_dir)
+    if plat != "qemu":
+        print("Error: 'emu' command only supports qemu platform.")
+        sys.exit(1)
+
+    # Ensure KyberEmu is available
+    ensure_kyberemu(work_dir)
+
+    # Run the emu make target
+    run_make(target, work_dir)
+
+
 # --- Help ---
 
 REPO_HELP = """KyberLab CLI - Repo Root Mode
@@ -361,6 +406,7 @@ Build Commands:
   kyberlab package [-i IMAGE]       Package image
   kyberlab clean   [-i IMAGE]       Clean build artifacts
   kyberlab distclean [-i IMAGE]     Full cleanup
+  kyberlab emu     [-i IMAGE]       Run image in QEMU (KyberEmu auto-installs)
 
 Docker Commands:
   kyberlab dkbuild [-d NAME]        Build Docker workbench image
@@ -466,6 +512,11 @@ def main():
             print("       Please run 'kyberlab init' from the KyberLab repo root or another empty directory.")
             sys.exit(1)
         do_init(args, root, context, platform=args.platform)
+
+    elif args.command == "emu":
+        # emu command has special handling: platform check + KyberEmu init
+        image = args.image or detect_image_from_cwd(root)
+        do_emu(image, context, root)
 
     elif args.command in BUILD_PHASES:
         # Auto-detect image from cwd if -i not given

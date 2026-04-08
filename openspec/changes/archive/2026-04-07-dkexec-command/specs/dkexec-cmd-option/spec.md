@@ -1,5 +1,8 @@
-## ADDED Requirements
+# dkexec-cmd-option Specification
 
+## Purpose
+TBD - created by archiving change dkexec-command. Update Purpose after archive.
+## Requirements
 ### Requirement: User-specified command via `-c CMD`
 The `kyberlab dkexec` command MUST accept an optional `-c CMD` argument. When provided, the make target is invoked with the `USER_RUN_CMD` variable set: `USER_RUN_CMD=<value> exec_<NAME>`. If `-c CMD` is not provided, `make exec_<NAME>` is executed without `USER_RUN_CMD` (default interactive behavior).
 
@@ -32,3 +35,4 @@ Before executing `dkexec`, the CLI MUST check whether a container with the targe
 #### Scenario: Container is running
 - **WHEN** user runs `kyberlab dkexec -d develop -c "echo hello"` and the container is running
 - **THEN** `make USER_RUN_CMD="echo hello" exec_develop` executes normally
+
