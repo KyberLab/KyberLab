@@ -73,19 +73,19 @@ Workspace build commands (run from workspace directory):
 
 ```bash
 # Build the Docker workbench image
-kyberlab dkbuild
+kyberlab dkbuild -d virt-aarch64
 
 # Build specific Docker image
-kyberlab dkbuild -d develop
+kyberlab dkbuild -d virt-aarch64
 
 # Start Docker container (interactive)
-kyberlab dkrun
+kyberlab dkrun -d virt-aarch64
 
 # Start Docker container (detached)
-kyberlab dkrund
+kyberlab dkrund -d virt-aarch64
 
 # Pin Docker dependencies
-kyberlab dkpin
+kyberlab dkpin -d virt-aarch64
 ```
 
 Build system images (run from workspace directory):
@@ -107,65 +107,15 @@ kyberlab install -i BusyBox
 kyberlab clean -i BusyBox
 
 # Run default image in QEMU
-make emu
+kyberlab emu
 
 # Run specific image in QEMU
-make emu_buildroot
-make emu_busybox
+kyberlab emu -i BuildRoot
+kyberlab emu -i BusyBox
 ```
 
 For more options, run `kyberlab help`.
 
-All make commands are run from a workspace directory (e.g., `build/virt-aarch64/`):
-
-```bash
-# Build the Docker workbench image
-make build_virt-aarch64
-
-# Start the Docker workbench environment
-make run_virt-aarch64
-
-# Build the default system image
-make build
-
-# Install the default image
-make install
-
-# Install a specific image (e.g., BusyBox)
-make busybox_install
-
-# Run the default image in QEMU
-make emu
-
-# Run a specific image in QEMU
-make emu_buildroot
-make emu_busybox
-
-# Individual build phases (can be run per-image)
-make fetch
-make patch
-make config
-make build
-make install
-make package
-make clean
-make distclean
-```
-
-## Creating a New Workspace
-
-```bash
-# Using repo
-mkdir -pv build/virt-aarch64 && cd build/virt-aarch64
-repo init -u https://github.com/KyberLab/KyberLab.git -b master -m manifests/qemu/virt-aarch64/default.xml
-repo sync -j$(nproc) -v && repo forall -c 'if [ -f .gitmodules ]; then git fetch && git submodule update --init --recursive --force; fi'
-cp .repo/manifests/template/* .
-
-# Or clone a workspace repo directly (e.g. Virt-AArch64)
-git clone https://github.com/KyberLab/Virt-AArch64.git
-cd Virt-AArch64
-git submodule update --init --recursive
-```
 
 ## AI Tooling
 
