@@ -1,6 +1,6 @@
 ## Context
 
-The KyberLab CLI (`kyberlab` script) provides a unified interface for workspace operations. Currently, to run system images in QEMU, users must directly invoke `make emu` or `make <image>_emu` from the workspace. This breaks consistency with other kyberlab commands and requires manual management of the KyberEmu repository dependency.
+The KyberLab CLI (`kyberlab` script) provides a unified interface for workspace operations. Currently, to run system images in QEMU, users must directly invoke `make emu` or `make emu_<image>` from the workspace. This breaks consistency with other kyberlab commands and requires manual management of the KyberEmu repository dependency.
 
 Current state:
 - Build phases: `build`, `fetch`, `patch`, `config`, `install`, `package`, `clean`, `distclean`
@@ -28,7 +28,7 @@ KyberEmu is a separate repository that must be present in `build/KyberEmu` to pr
 - Support emu for non-qemu platforms (explicitly excluded)
 - Modify the underlying `make emu` or `kyberemu_install` targets (assume they exist)
 - Change KyberEmu repository structure or initialization process
-- Add emu support to `make <image>_emu` individual targets (the CLI wrapper will handle it)
+- Add emu support to `make emu_<image>` individual targets (the CLI wrapper will handle it)
 
 ## Decisions
 
@@ -58,7 +58,7 @@ BUILD_PHASES = ("build", "fetch", "patch", "config", "install",
   c. Checks platform is qemu (read from WorkSpace.mk or config)
   d. Verifies `build/KyberEmu` exists in workspace root
   e. If missing, run `make kyberemu_install`
-  f. Call `run_make(target, work_dir)` with target=`<image>_emu` or `emu`
+  f. Call `run_make(target, work_dir)` with target=`emu_<image>` or `emu`
 
 **Platform detection approach:**
 Parse `WorkSpace.mk` to extract the `PLAT` variable value. The manifest used during `init` determines the platform (e.g., `manifests/qemu/virt-aarch64/default.xml` indicates qemu platform). We can read `WorkSpace.mk` and grep for `PLAT =` or similar variable.

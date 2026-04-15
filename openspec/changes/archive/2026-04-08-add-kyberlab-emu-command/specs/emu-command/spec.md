@@ -43,13 +43,13 @@ The `emu` command SHALL support the `-i IMAGE` option to specify which image to 
 
 #### Scenario: User specifies image explicitly
 - **WHEN** user runs `kyberlab emu -i BusyBox`
-- **THEN** the CLI SHALL execute `make BusyBox_emu` (or `make emu` if the target name differs)
+- **THEN** the CLI SHALL execute `make emu_BusyBox` (or `make emu` if the target name differs)
 - **AND** the BusyBox image SHALL be launched in QEMU
 
 #### Scenario: User runs emu from an image config directory without -i
 - **WHEN** user is in a directory like `config/image/BusyBox/` and runs `kyberlab emu`
 - **THEN** the CLI SHALL auto-detect the image name as "BusyBox"
-- **AND** execute `make BusyBox_emu`
+- **AND** execute `make emu_BusyBox`
 
 #### Scenario: User runs emu from workspace root without -i
 - **WHEN** user runs `kyberlab emu` from the workspace root and no specific image config directory is detected

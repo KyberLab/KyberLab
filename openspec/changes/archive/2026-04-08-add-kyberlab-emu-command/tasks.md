@@ -20,7 +20,7 @@
 
 - [x]4.1 Implement `do_emu(image, context, work_dir)` function with following logic:
   - Call `require_workspace(context)`
-  - Determine target: `f"{image}_emu"` if image specified, else `"emu"`
+  - Determine target: `f"emu_{image}"` if image specified, else `"emu"`
   - Call `detect_plat_from_workspace(work_dir)` and verify it equals "qemu"
   - Call `ensure_kyberemu(work_dir)`
   - Call `run_make(target, work_dir)`
@@ -51,7 +51,7 @@
 - [x]7.3 Manual test: run `kyberlab emu` in a non-qemu workspace (if possible to simulate):
   - Verify it prints platform error and exits without running any make
 - [x]7.4 Manual test: run `kyberlab emu -i BusyBox` from workspace root:
-  - Verify it executes `make BusyBox_emu`
+  - Verify it executes `make emu_BusyBox`
 - [x]7.5 Verify `kyberlab help` shows emu command with correct description
 - [x]7.6 Test from within an image config directory (e.g., `config/image/BusyBox/`) without -i flag to verify auto-detection
 
