@@ -356,7 +356,7 @@ def do_emu(image, context, work_dir):
     require_workspace(context)
 
     # Determine make target
-    target = f"{image}_emu" if image else "emu"
+    target = f"emu_{image}" if image else "emu"
 
     # Check platform restriction: only qemu supported
     plat = detect_plat_from_workspace(work_dir)
