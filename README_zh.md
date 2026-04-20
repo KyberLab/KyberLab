@@ -64,7 +64,7 @@ sudo ./install.sh --uninstall
 ./install.sh --uninstall --user
 ```
 
-注意：卸载 KyberLab 不会删除您的工作区数据（`build/`、`config/` 等目录）。
+注意：卸载 KyberLab 不会删除您的工作区数据。
 
 如果 `~/.local/bin` 不在您的 PATH 中，安装程序会提供添加它的说明。
 
@@ -90,7 +90,7 @@ sudo ./install.sh --uninstall
 kyberlab init
 ```
 
-这将在 `build/virt-aarch64/` 创建并运行 `repo init`、`repo sync`、初始化子模块、复制模板文件。
+这将在 `virt-aarch64/` 创建并运行 `repo init`、`repo sync`、初始化子模块、复制模板文件。
 
 **在任何其他目录**（仓库外部）：
 
@@ -119,7 +119,7 @@ kyberlab init -u https://github.com/example/KyberLab.git -b develop -d my-board 
 ### 4. 构建虚拟工作台镜像
 
 ```bash
-cd build/virt-aarch64
+cd virt-aarch64
 
 # 构建 Virt-AArch64 虚拟工作台镜像
 kyberlab dkbuild
@@ -128,7 +128,7 @@ kyberlab dkbuild
 ### 5. 构建系统镜像
 
 ```bash
-cd build/virt-aarch64
+cd virt-aarch64
 
 # 构建默认镜像
 kyberlab build
@@ -151,7 +151,7 @@ kyberlab clean -i BusyBox
 ### 6. Docker 命令
 
 ```bash
-cd build/virt-aarch64
+cd virt-aarch64
 
 # 构建 Docker 工作台镜像（默认开发板）
 kyberlab dkbuild

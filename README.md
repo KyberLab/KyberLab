@@ -62,7 +62,7 @@ sudo ./install.sh --uninstall
 ./install.sh --uninstall --user
 ```
 
-Note: Uninstalling KyberLab does not delete your workspace data (build/, config/ directories).
+Note: Uninstalling KyberLab does not delete your workspace data.
 
 If `~/.local/bin` is not in your PATH, the installer will provide instructions to add it.
 
@@ -88,7 +88,7 @@ Use the `kyberlab` CLI for one-click initialization.
 kyberlab init
 ```
 
-This creates `build/virt-aarch64/`, runs `repo init`, `repo sync`, initializes submodules, and copies template files.
+This creates `virt-aarch64/`, runs `repo init`, `repo sync`, initializes submodules, and copies template files.
 
 **From any other directory** (outside the repository):
 
@@ -109,7 +109,7 @@ kyberlab init
 kyberlab init -d virt-x86_64 -p qemu
 
 # From anywhere: custom URL and branch
-kyberlab init -u https://github.com/example/KyberLab.git -b develop -d my-board -p my-platform -m custom
+kyberlab init -u https://github.com/example/KyberLab.git -b develop -d my-board -p rockchip -m custom
 ```
 
 For more options, run `kyberlab help`.
@@ -117,7 +117,7 @@ For more options, run `kyberlab help`.
 ### 4. Build Virtual Workbench Image
 
 ```bash
-cd build/virt-aarch64
+cd virt-aarch64
 
 # Build Virt-AArch64 virtual workbench image
 kyberlab dkbuild
@@ -126,7 +126,7 @@ kyberlab dkbuild
 ### 5. Build System Image
 
 ```bash
-cd build/virt-aarch64
+cd virt-aarch64
 
 # Build default image
 kyberlab build
@@ -149,7 +149,7 @@ The `kyberlab` CLI auto-detects the image name when run from inside an image dir
 ### 6. Docker Commands
 
 ```bash
-cd build/virt-aarch64
+cd virt-aarch64
 
 # Build Docker workbench image (default board)
 kyberlab dkbuild
