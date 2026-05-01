@@ -18,6 +18,8 @@ import os
 import shutil
 import subprocess
 import sys
+import os
+import re
 
 REQUIRED_TOOLS = ("git", "repo", "make", "docker")
 
@@ -131,20 +133,34 @@ def detect_docker_from_cwd(workspace_root, cwd=None):
     return None
 
 
-def detect_plat_from_workspace(work_dir):
-    """Detect platform from workspace's .repo/manifests directory.
-
-    Returns the platform name (e.g., 'qemu', 'virt') or None if not found.
+def parse_plat_from_workspace(work_dir):
+    """Detect platform from config/Default.mk in the workspace.
+    Returns the platform name (e.g., 'qemu') or None if not found.
     """
-    manifests_path = os.path.join(work_dir, ".repo", "manifests", "manifests")
-    if not os.path.isdir(manifests_path):
-        return None
-    for plat in os.listdir(manifests_path):
-        plat_path = os.path.join(manifests_path, plat)
-        if os.path.isdir(plat_path):
-            return plat
-    return None
 
+    default_mk_path = os.path.join(work_dir, "config", "Default.mk")
+
+    if not os.path.isfile(default_mk_path):
+        print(f"Warning: Default.mk not found at {default_mk_path}")
+        return None
+
+    pattern = re.compile(r'^BUILD_PLATFORM\s*[:?]=\s*(\w+)')
+
+    try:
+        with open(default_mk_path, 'r', encoding='utf-8') as f:
+            for line in f:
+                line = line.strip()
+                match = pattern.match(line)
+                if match:
+                    plat = match.group(1)
+                    print(f"Detected platform from Default.mk: {plat}")
+                    return plat
+    except Exception as e:
+        print(f"Error reading Default.mk: {e}")
+        return None
+
+    print("Warning: BUILD_PLATFORM not found in Default.mk")
+    return None
 
 def ensure_kyberemu(work_dir):
     """Ensure KyberEmu repository is available; install if missing."""
@@ -359,9 +375,9 @@ def do_emu(image, context, work_dir):
     target = f"emu_{image}" if image else "emu"
 
     # Check platform restriction: only qemu supported
-    plat = detect_plat_from_workspace(work_dir)
+    plat = parse_plat_from_workspace(work_dir)
     if plat != "qemu":
-        print("Error: 'emu' command only supports qemu platform.")
+        print(f"Error: 'emu' command only supports qemu platform. Detected platform: {plat}, workdir: {work_dir}")
         sys.exit(1)
 
     # Ensure KyberEmu is available
