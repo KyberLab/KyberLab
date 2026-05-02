@@ -1,3 +1,4 @@
 /build
 /output
+/virt-*
 __pycache__
