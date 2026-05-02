@@ -1,0 +1,38 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3:*)",
+      "Bash(rm -rf /tmp/test-kyberlab-workspace)",
+      "Bash(mkdir -p /tmp/test-kyberlab-workspace)",
+      "Read(//tmp/**)",
+      "Bash(cp -r /opt/virt/KyberLab/KyberLab/manifests .)",
+      "Bash(cp -r /opt/virt/KyberLab/KyberLab/template .)",
+      "Bash(chmod +x:*)",
+      "Bash(./kyberlab help:*)",
+      "Bash(./kyberlab init:*)",
+      "Bash(openspec list:*)",
+      "Bash(openspec new:*)",
+      "Bash(openspec status:*)",
+      "Bash(openspec instructions:*)",
+      "Bash(git status:*)",
+      "Bash(git commit:*)",
+      "Bash(grep -r 'CONTAINER' build/virt-aarch64/bench/*.mk)",
+      "Bash(grep -rn -E 'name|--name|compose' build/virt-aarch64/bench/*.mk)",
+      "Bash(./kyberlab dkexec:*)",
+      "Bash(/opt/virt/KyberLab/KyberLab/install.sh --help)",
+      "Bash(/opt/virt/KyberLab/KyberLab/install.sh)",
+      "Bash(./install.sh:*)",
+      "Bash(~/.local/bin/kyberlab --version)",
+      "Bash(~/.local/bin/kyberlab --help)",
+      "Bash(~/.local/bin/kyberlab help:*)",
+      "Bash(sudo -n true)",
+      "Bash(sudo:*)",
+      "Bash(/usr/local/bin/kyberlab help:*)",
+      "Bash(ls -la *.md)",
+      "Bash(/home/lastritter/.local/bin/kyberlab help:*)",
+      "Bash(git add:*)",
+      "Bash([ -d openspec/specs ])",
+      "Bash([ -e \"$target\" ])"
+    ]
+  }
+}
